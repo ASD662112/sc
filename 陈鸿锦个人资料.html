@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人简历 | Jiba开发工程师</title>
+    <style>
+        /* 全局样式重置与基础设置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        /* 蓝色系高级背景：渐变浅蓝 */
+        body {
+            background: linear-gradient(120deg, #e8f4f8, #f0f8fb);
+            color: #2d3748;
+            line-height: 1.7;
+            overflow-x: hidden;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* 页面容器：全屏适配 */
+        .page-container {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 目录导航：悬浮左侧 */
+        .resume-nav {
+            position: fixed;
+            top: 50%;
+            left: 30px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(147, 174, 190, 0.15);
+            z-index: 999;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-list {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin: 12px 0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #4a5568;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .nav-item:hover {
+            background: #f0f8fb;
+            color: #3182ce;
+            transform: translateX(3px);
+        }
+
+        .nav-item.active {
+            background: #3182ce;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(49, 130, 206, 0.2);
+        }
+
+        /* 单页样式：侧滑换页动画 */
+        .resume-page {
+            width: 100%;
+            height: 100%;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 0;
+        }
+
+        .resume-page.active {
+            opacity: 1;
+            transform: translateX(0);
+            z-index: 1;
+        }
+
+        /* 页内内容容器 */
+        .page-content {
+            width: 90%;
+            max-width: 700px;
+            background: #ffffff;
+            padding: 40px 50px;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(147, 174, 190, 0.1);
+        }
+
+        /* 主标题：逐行动画基础样式 */
+        .page-title {
+            text-align: center;
+            color: #2b6cb0;
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 35px;
+            position: relative;
+            /* 初始隐藏 */
+            opacity: 0;
+            transform: translateY(10px);
+            /* 标题动画：延迟启动 */
+            animation: textFadeIn 0.5s ease 0.2s forwards;
+        }
+
+        .page-title::after {
+            content: "";
+            display: block;
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(to right, #3182ce, #63b3ed);
+            margin: 15px auto 0;
+            border-radius: 3px;
+        }
+
+        /* 基础信息：逐行动画 */
+        .basic-info {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .basic-info .left, .basic-info .right {
+            width: 45%;
+        }
+
+        .basic-info p {
+            margin: 10px 0;
+            font-size: 16px;
+            color: #4a5568;
+            transition: color 0.3s ease;
+            /* 初始隐藏 */
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .basic-info p:hover {
+            color: #3182ce;
+        }
+
+        /* 重点内容样式 */
+        .highlight {
+            color: #3182ce;
+            font-weight: 500;
+            transition: text-shadow 0.3s ease;
+        }
+
+        .highlight:hover {
+            text-shadow: 0 0 10px rgba(49, 130, 206, 0.15);
+        }
+
+        /* 列表项：逐行动画基础样式 */
+        .content-list {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .content-list li {
+            margin: 12px 0;
+            padding-left: 25px;
+            position: relative;
+            font-size: 15px;
+            color: #4a5568;
+            /* 初始隐藏 */
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .content-list li::before {
+            content: "•";
+            color: #3182ce;
+            position: absolute;
+            left: 0;
+            font-size: 22px;
+            line-height: 1;
+            transition: transform 0.3s ease;
+        }
+
+        .content-list li:hover::before {
+            transform: scale(1.4);
+            color: #2b6cb0;
+        }
+
+        /* 项目卡片样式 */
+        .project-item {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 3px solid #3182ce;
+            transition: all 0.3s ease;
+            /* 项目卡片初始隐藏 */
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .project-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(147, 174, 190, 0.1);
+        }
+
+        .project-item .project-time {
+            color: #718096;
+            font-size: 14px;
+            margin-bottom: 8px;
+            /* 初始隐藏 */
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .project-item .project-name {
+            color: #2b6cb0;
+            font-weight: 600;
+            font-size: 17px;
+            margin-bottom: 10px;
+            /* 初始隐藏 */
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        /* 换页导航按钮 */
+        .nav-buttons {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 999;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            background: #3182ce;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(49, 130, 206, 0.2);
+        }
+
+        .nav-btn:hover {
+            background: #2b6cb0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(49, 130, 206, 0.3);
+        }
+
+        .nav-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            /* 移动端隐藏侧边目录，保留底部按钮 */
+            .resume-nav {
+                display: none;
+            }
+
+            .page-content {
+                padding: 25px 20px;
+                width: 95%;
+            }
+
+            .basic-info .left, .basic-info .right {
+                width: 100%;
+            }
+
+            .page-title {
+                font-size: 26px;
+            }
+
+            .nav-buttons {
+                gap: 10px;
+            }
+
+            .nav-btn {
+                padding: 8px 15px;
+                font-size: 13px;
+            }
+        }
+
+        /* 文字逐行渐入动画关键帧 */
+        @keyframes textFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- 侧边目录导航 -->
+        <div class="resume-nav">
+            <ul class="nav-list">
+                <li class="nav-item active" data-target="1">基础信息</li>
+                <li class="nav-item" data-target="2">教育背景</li>
+                <li class="nav-item" data-target="3">核心技能</li>
+                <li class="nav-item" data-target="4">项目经验</li>
+                <li class="nav-item" data-target="5">证书&奖项</li>
+                <li class="nav-item" data-target="6">自我评价</li>
+            </ul>
+        </div>
+
+        <!-- 第1页：基础信息 -->
+        <div class="resume-page active" data-page="1">
+            <div class="page-content">
+                <h1 class="page-title">基础信息</h1>
+                <div class="basic-info">
+                    <div class="left">
+                        <p id="b1"><strong>姓名：</strong>陈鸿锦</p>
+                        <p id="b2"><strong>性别：</strong>钢管</p>
+                        <p id="b3"><strong>年龄：</strong>-9178</p>
+                        <p id="b4"><strong>电话：</strong><span class="highlight">38843809438</span></p>
+                    </div>
+                    <div class="right">
+                        <p id="b5"><strong>邮箱：</strong><span class="highlight">chenghongjingshiyuanqingdeer@outlok</span></p>
+                        <p id="b6"><strong>求职意向：</strong>Jiba开发工程师</p>
+                        <p id="b7"><strong>期望薪资：</strong>911/yer</p>
+                        <p id="b8"><strong>工作地点：</strong>撸管市</p>
+                        <p id="b9"><strong>到岗时间：</strong>随时</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第2页：教育背景 -->
+        <div class="resume-page" data-page="2">
+            <div class="page-content">
+                <h1 class="page-title">教育背景</h1>
+                <ul class="content-list">
+                    <li id="e1">20XX.09 - 20XX.06 | XX大学 | 计算机科学与技术 | 本科 | 学士学位</li>
+                    <li id="e2">主修课程：<span class="highlight">数据结构、计算机网络、Jiba编程、数据库原理</span></li>
+                    <li id="e3">学业成果：GPA 3.5/4.0，校级-二等奖学金91次）</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 第3页：核心技能 -->
+        <div class="resume-page" data-page="3">
+            <div class="page-content">
+                <h1 class="page-title">核心技能</h1>
+                <ul class="content-list">
+                    <li id="s1">编程能力：<span class="highlight">Jiab（熟练）</span>、Python（了解）、SQL（熟练）</li>
+                    <li id="s2">框架工具：<span class="highlight">Spring Boot、MyBatis、Git、IDEA、MySQL</span></li>
+                    <li id="s3">数据库：<span class="highlight">MySQL（熟练）</span>、Redis（了解）、SQL优化（基础）</li>
+                    <li id="s4">软技能：需求分析、接口设计、团队协作、问题排查</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 第4页：项目经验 -->
+        <div class="resume-page" data-page="4">
+            <div class="page-content">
+                <h1 class="page-title">项目经验</h1>
+                <div class="project-item" id="p1">
+                    <div class="project-time" id="p1-time">2078.09 - 2091.01</div>
+                    <div class="project-name" id="p1-name">个人黑客的低调系统（独立开发）</div>
+                    <ul class="content-list">
+                        <li id="p1-1">项目背景：解决个人内容沉淀与分享需求，适配多终端访问</li>
+                        <li id="p1-2">技术栈：<span class="highlight">Spring Boot + MySQL + Redis + Thymeleaf</span></li>
+                        <li id="p1-3">核心产出：设计5张核心数据库表，完成30+个接口开发，页面加载速度提升40%</li>
+                        <li id="p1-4">成果：代码行数9178+，GitHub Star 50+</li>
+                    </ul>
+                </div>
+                <div class="project-item" id="p2">
+                    <div class="project-time" id="p2-time">2092.54 - 2100.08</div>
+                    <div class="project-name" id="p2-name">撸管企业订单管理系统（实习）</div>
+                    <ul class="content-list">
+                        <li id="p2-1">核心职责：协助开发订单导出功能，修复10+个已知Bug</li>
+                        <li id="p2-2">成果：<span class="highlight">订单查询效率提升25%，接口覆盖率达92%</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第5页：证书&奖项 -->
+        <div class="resume-page" data-page="5">
+            <div class="page-content">
+                <h1 class="page-title">证书&奖项</h1>
+                <ul class="content-list">
+                    <li id="c1">20XX年 软件设计师（中级）| 2078年 大学英语六级 550分</li>
+                    <li id="c2">20XX年 校级程序设计竞赛二等奖</li>
+                    <li id="c3">20XX年 计算机二级（Jiba）优秀</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 第6页：自我评价 -->
+        <div class="resume-page" data-page="6">
+            <div class="page-content">
+                <h1 class="page-title">自我评价</h1>
+                <ul class="content-list">
+                    <li id="m1">扎实的Jiba基础，91年+项目开发经验，熟悉企业级开发流程</li>
+                    <li id="m2">注重代码规范和性能优化，具备独立分析、解决问题的能力</li>
+                    <li id="m3">学习能力强，可快速适配新技术，重视团队协作与沟通</li>
+                    <li id="m4">具备良好的抗压能力，能够高效完成日常开发任务</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 换页导航按钮 -->
+        <div class="nav-buttons">
+            <button class="nav-btn" id="prevBtn">上一页</button>
+            <button class="nav-btn" id="nextBtn">下一页</button>
+        </div>
+    </div>
+
+    <script>
+        // 核心变量
+        const totalPages = 6;
+        let currentPage = 1;
+
+        // 获取元素
+        const pages = document.querySelectorAll('.resume-page');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const navItems = document.querySelectorAll('.nav-item');
+
+        // 初始化：第一页文字逐行动画
+        initTextAnimation(1);
+        // 初始化按钮状态
+        updateButtonState();
+
+        // 下一页
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                switchPage(currentPage + 1);
+            }
+        });
+
+        // 上一页
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                switchPage(currentPage - 1);
+            }
+        });
+
+        // 目录项点击切换页面
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const targetPage = parseInt(item.dataset.target);
+                switchPage(targetPage);
+            });
+        });
+
+        // 切换页面核心函数
+        function switchPage(targetPage) {
+            // 隐藏当前页
+            pages.forEach(page => {
+                if (parseInt(page.dataset.page) === currentPage) {
+                    page.classList.remove('active');
+                }
+            });
+
+            // 显示目标页
+            pages.forEach(page => {
+                if (parseInt(page.dataset.page) === targetPage) {
+                    page.classList.add('active');
+                    // 目标页显示后，执行文字逐行动画
+                    setTimeout(() => {
+                        initTextAnimation(targetPage);
+                    }, 100);
+                }
+            });
+
+            // 更新目录激活状态
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if (parseInt(item.dataset.target) === targetPage) {
+                    item.classList.add('active');
+                }
+            });
+
+            // 更新当前页码和按钮状态
+            currentPage = targetPage;
+            updateButtonState();
+        }
+
+        // 文字逐行动画核心函数
+        function initTextAnimation(pageNum) {
+            // 先重置所有文字为隐藏状态
+            const allTextElements = document.querySelectorAll(`[data-page="${pageNum}"] p, [data-page="${pageNum}"] li, [data-page="${pageNum}"] .project-item, [data-page="${pageNum}"] .project-time, [data-page="${pageNum}"] .project-name`);
+            allTextElements.forEach(el => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(10px)';
+            });
+
+            // 逐行启动动画，间隔0.1秒
+            allTextElements.forEach((el, index) => {
+                setTimeout(() => {
+                    el.style.animation = 'textFadeIn 0.5s ease forwards';
+                }, 100 * index);
+            });
+        }
+
+        // 更新按钮禁用状态
+        function updateButtonState() {
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+        }
+
+        // 键盘控制换页
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+                nextBtn.click();
+            } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                prevBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
