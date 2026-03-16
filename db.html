@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>跑酷躲避障碍物 | 主题切换版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Arial", "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            overflow: hidden;
+            margin: 0;
+            /* 移动端横屏相关 */
+            position: relative;
+        }
+
+        /* 横屏提示样式 */
+        .landscape-prompt {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            font-size: 2rem;
+            text-align: center;
+            padding-top: 40vh;
+            z-index: 1000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .landscape-prompt i {
+            font-size: 4rem;
+            transform: rotate(90deg);
+            animation: rotatePhone 2s infinite alternate;
+        }
+
+        @keyframes rotatePhone {
+            0% { transform: rotate(90deg); }
+            100% { transform: rotate(110deg); }
+        }
+
+        /* 仅在竖屏移动端显示提示 */
+        @media (max-width: 768px) and (orientation: portrait) {
+            .landscape-prompt {
+                display: flex;
+            }
+            body > *:not(.landscape-prompt) {
+                display: none !important;
+            }
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            text-align: center;
+        }
+
+        .score-panel {
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            font-weight: bold;
+            color: white;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            background: rgba(0,0,0,0.1);
+            padding: 8px 20px;
+            border-radius: 30px;
+            display: flex;
+            gap: clamp(1rem, 5vw, 2rem);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .high-score {
+            color: #FFD700;
+        }
+
+        .upload-panel {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-size: clamp(0.9rem, 2vw, 1rem);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #uploadBtn {
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: inherit;
+        }
+
+        #uploadBtn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 100vw;
+            height: 70vh;
+            min-height: 400px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #87CEEB;
+        }
+
+        .tips {
+            margin-top: 20px;
+            color: rgba(255,255,255,0.9);
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        .theme-indicator {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            padding: 5px 15px;
+            background: rgba(0,0,0,0.3);
+            color: white;
+            border-radius: 20px;
+            font-size: clamp(0.8rem, 1.5vw, 0.9rem);
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        /* 适配移动端触摸操作（横屏优化） */
+        .mobile-controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px; /* 横屏时移到右侧 */
+            transform: none; /* 取消居中偏移 */
+            z-index: 20;
+        }
+
+        .jump-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            border: 3px solid white;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        /* 移动端横屏时显示控制按钮 */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .mobile-controls {
+                display: block;
+            }
+            #gameContainer {
+                height: 80vh; /* 横屏时增加游戏容器高度 */
+            }
+            body {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 横屏提示 -->
+    <div class="landscape-prompt">
+        <i>📱</i>
+        <div>请将手机横屏以游玩游戏</div>
+    </div>
+
+    <h1>跑酷躲避障碍物 | 主题切换版</h1>
+    <div class="score-panel">
+        分数: <span id="score">0</span>
+        历史最高分: <span id="highScore" class="high-score">0</span>
+    </div>
+    <div class="upload-panel">
+        <label for="fileInput" id="uploadBtn">上传玩家图片</label>
+        <input type="file" id="fileInput" accept="image/*">
+        <span id="uploadStatus">未上传图片</span>
+    </div>
+    <div id="gameContainer">
+        <div class="theme-indicator" id="themeIndicator">自然主题</div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    <div class="tips">操作说明：空格键 / 方向键↑ 跳跃，躲避前方障碍物和坑洞<br>分数每达到30分切换主题！</div>
+    <!-- 移动端触摸按钮 -->
+    <div class="mobile-controls">
+        <button class="jump-btn" id="jumpBtn">跳跃</button>
+    </div>
+
+    <!-- 音频元素 -->
+    <audio id="jumpSound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="deathSound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-player-losing-or-failing-2042.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // ========== 全局变量与初始化 ==========
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('highScore');
+        const themeIndicator = document.getElementById('themeIndicator');
+        const fileInput = document.getElementById('fileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const jumpBtn = document.getElementById('jumpBtn');
+        const gameContainer = document.getElementById('gameContainer');
+
+        // 音效相关
+        const jumpSound = document.getElementById('jumpSound');
+        const deathSound = document.getElementById('deathSound');
+        jumpSound.volume = 0.5;
+        deathSound.volume = 0.6;
+
+        // 玩家图片相关
+        let playerImage = null;
+        let isImageLoaded = false;
+        // 定时器与游戏状态
+        let obstacleSpawnTimer = null;
+        let gameLoopId = null;
+        let highScore = localStorage.getItem('parkourHighScore') ? parseInt(localStorage.getItem('parkourHighScore')) : 0;
+        highScoreElement.textContent = highScore;
+
+        // 帧率独立相关变量
+        let lastTimestamp = 0;
+        const TARGET_FPS = 60;
+        const FIXED_DELTA_TIME = 1 / TARGET_FPS; // 固定时间步长（60帧）
+
+        // ========== 游戏配置（集中管理） ==========
+        const GAME_CONFIG = {
+            player: {
+                x: 100,
+                y: 0,
+                width: 40,
+                height: 40,
+                speed: 500, // 改为像素/秒（帧率独立）
+                jumpForce: 700, // 改为像素/秒
+                gravity: 1800, // 改为像素/秒²
+                velocityY: 0,
+                isJumping: false,
+                colors: {
+                    nature: { main: '#3498db', border: '#2980b9' },
+                    desert: { main: '#e74c3c', border: '#c0392b' }
+                }
+            },
+            ground: {
+                nature: {
+                    y: 0,
+                    height: 40,
+                    grassColor: '#2ecc71',
+                    grassDarkColor: '#27ae60',
+                    dirtColor: '#8B4513',
+                    dirtLightColor: '#A0522D',
+                    stoneColor: '#708090'
+                },
+                desert: {
+                    y: 0,
+                    height: 40,
+                    sandColor: '#F4D35E',
+                    sandDarkColor: '#EE964B',
+                    sandLightColor: '#F9C784',
+                    rockColor: '#8C7853'
+                }
+            },
+            obstacles: {
+                list: [],
+                holes: [],
+                minSize: 30,
+                maxSize: 60,
+                width: 30,
+                holeWidth: 80,
+                holeDepth: 20,
+                spawnDistance: 800,
+                minSpawnInterval: 1500,
+                maxSpawnInterval: 3000,
+                // 丰富障碍物样式配置
+                types: {
+                    nature: [
+                        { shape: 'rect', start: '#333333', end: '#555555', hasPattern: true },
+                        { shape: 'circle', start: '#555555', end: '#777777', hasPattern: false },
+                        { shape: 'triangle', start: '#777777', end: '#999999', hasPattern: true },
+                        { shape: 'hexagon', start: '#999999', end: '#BBBBBB', hasPattern: false },
+                        { shape: 'rect', start: '#BBBBBB', end: '#DDDDDD', hasPattern: true }
+                    ],
+                    desert: [
+                        { shape: 'rect', start: '#222222', end: '#444444', hasPattern: true },
+                        { shape: 'circle', start: '#444444', end: '#666666', hasPattern: false },
+                        { shape: 'triangle', start: '#666666', end: '#888888', hasPattern: true },
+                        { shape: 'hexagon', start: '#888888', end: '#AAAAAA', hasPattern: false },
+                        { shape: 'rect', start: '#AAAAAA', end: '#CCCCCC', hasPattern: true }
+                    ]
+                },
+                holeColors: {
+                    nature: { main: '#555555', shadow: '#333333' },
+                    desert: { main: '#666666', shadow: '#444444' }
+                }
+            },
+            theme: {
+                current: 'nature',
+                switchScore: 30,
+                lastSwitchScore: 0,
+                list: ['nature', 'desert'],
+                names: { nature: '自然主题', desert: '沙漠主题' }
+            },
+            background: {
+                skyOffset: 0,
+                sunOffset: 0,
+                mountainFarOffset: 0,
+                mountainMidOffset: 0,
+                mountainNearOffset: 0,
+                duneFarOffset: 0,
+                duneMidOffset: 0,
+                duneNearOffset: 0,
+                clouds: [],
+                cloudCount: 8,
+                birds: [],
+                birdCount: 3,
+                camels: [],
+                camelCount: 2,
+                trees: [],
+                treeCount: 15,
+                cactuses: [],
+                cactusCount: 12,
+                rocks: [],
+                rockCount: 10,
+                farMountainPoints: [],
+                midMountainPoints: [],
+                nearMountainPoints: [],
+                farDunePoints: [],
+                midDunePoints: [],
+                nearDunePoints: []
+            },
+            score: 0,
+            isGameOver: false
+        };
+
+        // ========== 工具函数 ==========
+        /**
+         * 创建线性渐变
+         */
+        function createGradient(x, y, width, height, startColor, endColor) {
+            const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
+            gradient.addColorStop(0, startColor);
+            gradient.addColorStop(1, endColor);
+            return gradient;
+        }
+
+        /**
+         * 适配画布尺寸
+         */
+        function resizeCanvas() {
+            const containerRect = gameContainer.getBoundingClientRect();
+            canvas.width = containerRect.width;
+            canvas.height = containerRect.height;
+            
+            GAME_CONFIG.ground.nature.y = canvas.height - GAME_CONFIG.ground.nature.height;
+            GAME_CONFIG.ground.desert.y = canvas.height - GAME_CONFIG.ground.desert.height;
+            GAME_CONFIG.player.y = GAME_CONFIG.ground.nature.y - GAME_CONFIG.player.height;
+            
+            initBackground();
+        }
+
+        // ========== 事件处理 ==========
+        // 图片上传处理
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                playerImage = new Image();
+                playerImage.onload = function() {
+                    isImageLoaded = true;
+                    uploadStatus.textContent = '图片上传成功！';
+                    uploadStatus.style.color = '#2ecc71';
+                };
+                playerImage.onerror = function() {
+                    isImageLoaded = false;
+                    uploadStatus.textContent = '图片加载失败';
+                    uploadStatus.style.color = '#e74c3c';
+                };
+                playerImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 跳跃控制
+        function handleJump() {
+            if (GAME_CONFIG.isGameOver) return;
+            if (!GAME_CONFIG.player.isJumping) {
+                GAME_CONFIG.player.velocityY = -GAME_CONFIG.player.jumpForce;
+                GAME_CONFIG.player.isJumping = true;
+                
+                jumpSound.currentTime = 0;
+                jumpSound.play().catch(err => console.log('音效播放失败:', err));
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === ' ' || e.key === 'ArrowUp')) {
+                handleJump();
+            }
+        });
+
+        jumpBtn.addEventListener('click', handleJump);
+        jumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleJump();
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // ========== 游戏逻辑函数 ==========
+        /**
+         * 初始化背景元素
+         */
+        function initBackground() {
+            const bg = GAME_CONFIG.background;
+            const groundNature = GAME_CONFIG.ground.nature;
+            const groundDesert = GAME_CONFIG.ground.desert;
+            
+            bg.clouds = [];
+            bg.birds = [];
+            bg.camels = [];
+            bg.farMountainPoints = [];
+            bg.midMountainPoints = [];
+            bg.nearMountainPoints = [];
+            bg.farDunePoints = [];
+            bg.midDunePoints = [];
+            bg.nearDunePoints = [];
+            bg.trees = [];
+            bg.cactuses = [];
+            bg.rocks = [];
+            
+            // 生成云朵/沙尘
+            for (let i = 0; i < bg.cloudCount; i++) {
+                bg.clouds.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * 120 + 10,
+                    size: Math.random() * 50 + 20,
+                    opacity: Math.random() * 0.4 + 0.5,
+                    speed: Math.random() * 0.3 + 0.05
+                });
+            }
+            
+            // 生成飞鸟
+            for (let i = 0; i < bg.birdCount; i++) {
+                bg.birds.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * 150 + 30,
+                    size: Math.random() * 10 + 5,
+                    speed: Math.random() * 0.5 + 0.2
+                });
+            }
+            
+            // 生成骆驼
+            for (let i = 0; i < bg.camelCount; i++) {
+                bg.camels.push({
+                    x: Math.random() * canvas.width * 3,
+                    y: groundDesert.y - Math.random() * 40 - 30,
+                    size: Math.random() * 20 + 15,
+                    speed: (GAME_CONFIG.player.speed / 1000) * 0.4 // 转换为像素/秒
+                });
+            }
+            
+            // 生成山体轮廓点
+            for (let x = 0; x <= canvas.width + 300; x += 60) {
+                bg.farMountainPoints.push({ x, y: Math.random() * 70 + 90 });
+            }
+            for (let x = 0; x <= canvas.width + 300; x += 50) {
+                bg.midMountainPoints.push({ x, y: Math.random() * 60 + 120 });
+            }
+            for (let x = 0; x <= canvas.width + 300; x += 40) {
+                bg.nearMountainPoints.push({ x, y: Math.random() * 80 + 140 });
+            }
+            
+            // 生成沙丘轮廓点
+            for (let x = 0; x <= canvas.width + 300; x += 80) {
+                bg.farDunePoints.push({ x, y: Math.random() * 50 + 100 });
+            }
+            for (let x = 0; x <= canvas.width + 300; x += 60) {
+                bg.midDunePoints.push({ x, y: Math.random() * 60 + 130 });
+            }
+            for (let x = 0; x <= canvas.width + 300; x += 50) {
+                bg.nearDunePoints.push({ x, y: Math.random() * 70 + 150 });
+            }
+            
+            // 生成树木
+            for (let i = 0; i < bg.treeCount; i++) {
+                bg.trees.push({
+                    x: Math.random() * canvas.width * 2,
+                    y: groundNature.y - Math.random() * 80 - 40,
+                    trunkWidth: Math.random() * 8 + 4,
+                    crownSize: Math.random() * 30 + 15,
+                    crownColor: `rgb(${80 + Math.random() * 40}, ${140 + Math.random() * 30}, ${60 + Math.random() * 20})`,
+                    speed: (GAME_CONFIG.player.speed / 1000) * 0.8
+                });
+            }
+            
+            // 生成仙人掌
+            for (let i = 0; i < bg.cactusCount; i++) {
+                bg.cactuses.push({
+                    x: Math.random() * canvas.width * 2,
+                    y: groundDesert.y - Math.random() * 60 - 20,
+                    width: Math.random() * 10 + 5,
+                    height: Math.random() * 50 + 20,
+                    armCount: Math.floor(Math.random() * 3) + 1,
+                    speed: (GAME_CONFIG.player.speed / 1000) * 0.7
+                });
+            }
+            
+            // 生成岩石
+            for (let i = 0; i < bg.rockCount; i++) {
+                bg.rocks.push({
+                    x: Math.random() * canvas.width * 2,
+                    y: groundNature.y - Math.random() * 15 - 5,
+                    size: Math.random() * 15 + 5,
+                    roundness: Math.random() * 0.5 + 0.3,
+                    speed: GAME_CONFIG.player.speed / 1000
+                });
+            }
+        }
+
+        /**
+         * 切换主题逻辑
+         */
+        function checkThemeSwitch() {
+            const theme = GAME_CONFIG.theme;
+            if (GAME_CONFIG.score >= theme.lastSwitchScore + theme.switchScore) {
+                const currentIndex = theme.list.indexOf(theme.current);
+                const nextIndex = (currentIndex + 1) % theme.list.length;
+                theme.current = theme.list[nextIndex];
+                theme.lastSwitchScore = GAME_CONFIG.score;
+                themeIndicator.textContent = theme.names[theme.current];
+                
+                // 提升难度（速度）
+                if (GAME_CONFIG.player.speed < 1500) { // 改为像素/秒
+                    GAME_CONFIG.player.speed += 50; // 每次+50像素/秒
+                    
+                    // 同步更新所有元素速度
+                    GAME_CONFIG.background.trees.forEach(tree => {
+                        tree.speed = (GAME_CONFIG.player.speed / 1000) * 0.8;
+                    });
+                    GAME_CONFIG.background.cactuses.forEach(cactus => {
+                        cactus.speed = (GAME_CONFIG.player.speed / 1000) * 0.7;
+                    });
+                    GAME_CONFIG.background.rocks.forEach(rock => {
+                        rock.speed = GAME_CONFIG.player.speed / 1000;
+                    });
+                    GAME_CONFIG.background.camels.forEach(camel => {
+                        camel.speed = (GAME_CONFIG.player.speed / 1000) * 0.4;
+                    });
+                }
+            }
+        }
+
+        /**
+         * 生成障碍物（丰富样式）
+         */
+        function spawnObstacle() {
+            if (GAME_CONFIG.isGameOver) return;
+            
+            const isHole = Math.random() > 0.5;
+            const obstacles = GAME_CONFIG.obstacles;
+            const groundY = GAME_CONFIG.theme.current === 'nature' 
+                ? GAME_CONFIG.ground.nature.y 
+                : GAME_CONFIG.ground.desert.y;
+            
+            if (isHole) {
+                // 生成坑洞（增加随机宽度）
+                const randomWidth = obstacles.holeWidth + Math.random() * 40 - 20;
+                obstacles.holes.push({
+                    x: canvas.width + obstacles.spawnDistance,
+                    y: groundY,
+                    width: randomWidth,
+                    depth: obstacles.holeDepth + Math.random() * 10,
+                    color: obstacles.holeColors[GAME_CONFIG.theme.current].main,
+                    shadowColor: obstacles.holeColors[GAME_CONFIG.theme.current].shadow
+                });
+            } else {
+                // 生成普通障碍物（丰富形状）
+                const height = Math.random() * (obstacles.maxSize - obstacles.minSize) + obstacles.minSize;
+                const typeSets = obstacles.types[GAME_CONFIG.theme.current];
+                const typeSet = typeSets[Math.floor(Math.random() * typeSets.length)];
+                
+                obstacles.list.push({
+                    x: canvas.width + obstacles.spawnDistance,
+                    y: groundY - height,
+                    width: obstacles.width + Math.random() * 20 - 10, // 随机宽度
+                    height: height,
+                    startColor: typeSet.start,
+                    endColor: typeSet.end,
+                    shape: typeSet.shape,
+                    hasPattern: typeSet.hasPattern,
+                    patternDensity: Math.random() * 5 + 3 // 图案密度
+                });
+            }
+            
+            // 计划下一次生成
+            const nextSpawnTime = Math.random() * (obstacles.maxSpawnInterval - obstacles.minSpawnInterval) + obstacles.minSpawnInterval;
+            obstacleSpawnTimer = setTimeout(spawnObstacle, nextSpawnTime);
+        }
+
+        /**
+         * 更新玩家物理状态（帧率独立）
+         */
+        function updatePlayerPhysics(deltaTime) {
+            const p = GAME_CONFIG.player;
+            const groundY = GAME_CONFIG.theme.current === 'nature' 
+                ? GAME_CONFIG.ground.nature.y 
+                : GAME_CONFIG.ground.desert.y;
+            
+            // 应用重力（乘以时间步长）
+            p.velocityY += p.gravity * deltaTime;
+            p.y += p.velocityY * deltaTime;
+            
+            // 落地检测
+            if (p.y >= groundY - p.height) {
+                p.y = groundY - p.height;
+                p.velocityY = 0;
+                p.isJumping = false;
+            }
+        }
+
+        /**
+         * 更新障碍物位置（帧率独立）
+         */
+        function updateObstacles(deltaTime) {
+            const obstacles = GAME_CONFIG.obstacles;
+            const pSpeed = GAME_CONFIG.player.speed * deltaTime; // 实际移动距离 = 速度 * 时间
+            const typeSets = obstacles.types[GAME_CONFIG.theme.current];
+            
+            // 更新普通障碍物
+            for (let i = obstacles.list.length - 1; i >= 0; i--) {
+                const obs = obstacles.list[i];
+                obs.x -= pSpeed;
+                
+                if (obs.x + obs.width < 0) {
+                    obstacles.list.splice(i, 1);
+                    GAME_CONFIG.score++;
+                    scoreElement.textContent = GAME_CONFIG.score;
+                    scoreElement.style.color = typeSets[GAME_CONFIG.score % typeSets.length].start;
+                    
+                    checkThemeSwitch();
+                    
+                    // 逐步提升速度
+                    if (GAME_CONFIG.player.speed < (GAME_CONFIG.theme.current === 'desert' ? 1500 : 1200)) {
+                        GAME_CONFIG.player.speed += 5; // 每次+5像素/秒
+                        updateElementSpeeds();
+                    }
+                }
+            }
+            
+            // 更新坑洞
+            for (let i = obstacles.holes.length - 1; i >= 0; i--) {
+                const hole = obstacles.holes[i];
+                hole.x -= pSpeed;
+                
+                if (hole.x + hole.width < 0) {
+                    obstacles.holes.splice(i, 1);
+                    GAME_CONFIG.score++;
+                    scoreElement.textContent = GAME_CONFIG.score;
+                    scoreElement.style.color = typeSets[GAME_CONFIG.score % typeSets.length].start;
+                    
+                    checkThemeSwitch();
+                    
+                    // 逐步提升速度
+                    if (GAME_CONFIG.player.speed < (GAME_CONFIG.theme.current === 'desert' ? 1500 : 1200)) {
+                        GAME_CONFIG.player.speed += 5;
+                        updateElementSpeeds();
+                    }
+                }
+            }
+        }
+
+        /**
+         * 更新背景元素速度
+         */
+        function updateElementSpeeds() {
+            const speed = GAME_CONFIG.player.speed / 1000; // 转换为原速度单位
+            GAME_CONFIG.background.trees.forEach(tree => {
+                tree.speed = speed * 0.8;
+            });
+            GAME_CONFIG.background.cactuses.forEach(cactus => {
+                cactus.speed = speed * 0.7;
+            });
+            GAME_CONFIG.background.rocks.forEach(rock => {
+                rock.speed = speed;
+            });
+            GAME_CONFIG.background.camels.forEach(camel => {
+                camel.speed = speed * 0.4;
+            });
+        }
+
+        /**
+         * 更新背景滚动和元素（帧率独立）
+         */
+        function updateBackground(deltaTime) {
+            const bg = GAME_CONFIG.background;
+            const speed = GAME_CONFIG.player.speed * deltaTime; // 实际移动距离
+            const speedUnit = GAME_CONFIG.player.speed / 1000; // 原速度单位
+            const isDesert = GAME_CONFIG.theme.current === 'desert';
+            const groundY = isDesert ? GAME_CONFIG.ground.desert.y : GAME_CONFIG.ground.nature.y;
+            
+            // 视差滚动（乘以时间步长）
+            if (!isDesert) {
+                bg.skyOffset -= speed * 0.03;
+                bg.sunOffset -= speed * 0.01;
+                bg.mountainFarOffset -= speed * 0.15;
+                bg.mountainMidOffset -= speed * 0.3;
+                bg.mountainNearOffset -= speed * 0.6;
+                
+                if (bg.mountainFarOffset < -300) bg.mountainFarOffset = 0;
+                if (bg.mountainMidOffset < -300) bg.mountainMidOffset = 0;
+                if (bg.mountainNearOffset < -300) bg.mountainNearOffset = 0;
+            } else {
+                bg.skyOffset -= speed * 0.02;
+                bg.sunOffset -= speed * 0.015;
+                bg.duneFarOffset -= speed * 0.2;
+                bg.duneMidOffset -= speed * 0.4;
+                bg.duneNearOffset -= speed * 0.7;
+                
+                if (bg.duneFarOffset < -300) bg.duneFarOffset = 0;
+                if (bg.duneMidOffset < -300) bg.duneMidOffset = 0;
+                if (bg.duneNearOffset < -300) bg.duneNearOffset = 0;
+            }
+            
+            // 更新云朵/沙尘
+            bg.clouds.forEach(cloud => {
+                cloud.x += cloud.speed * (isDesert ? 1.5 : 1) * 1000 * deltaTime; // 转换为像素/秒
+                if (cloud.x > canvas.width + cloud.size) {
+                    cloud.x = -cloud.size;
+                    cloud.y = Math.random() * 120 + 10;
+                    cloud.opacity = Math.random() * 0.4 + 0.5;
+                }
+            });
+            
+            // 更新飞鸟
+            bg.birds.forEach(bird => {
+                if (!isDesert) {
+                    bird.x += bird.speed * 1000 * deltaTime;
+                    if (bird.x > canvas.width + 50) {
+                        bird.x = -50;
+                        bird.y = Math.random() * 150 + 30;
+                    }
+                }
+            });
+            
+            // 更新骆驼
+            bg.camels.forEach(camel => {
+                if (isDesert) {
+                    camel.x -= camel.speed * 1000 * deltaTime;
+                    if (camel.x + camel.size * 3 < 0) {
+                        camel.x = canvas.width + Math.random() * 500;
+                        camel.y = GAME_CONFIG.ground.desert.y - Math.random() * 40 - 30;
+                    }
+                }
+            });
+            
+            // 更新树木
+            bg.trees.forEach(tree => {
+                if (!isDesert) {
+                    tree.x -= tree.speed * 1000 * deltaTime;
+                    if (tree.x + tree.trunkWidth < 0) {
+                        tree.x = canvas.width + Math.random() * 200;
+                        tree.y = GAME_CONFIG.ground.nature.y - Math.random() * 80 - 40;
+                        tree.trunkWidth = Math.random() * 8 + 4;
+                        tree.crownSize = Math.random() * 30 + 15;
+                    }
+                }
+            });
+            
+            // 更新仙人掌
+            bg.cactuses.forEach(cactus => {
+                if (isDesert) {
+                    cactus.x -= cactus.speed * 1000 * deltaTime;
+                    if (cactus.x + cactus.width < 0) {
+                        cactus.x = canvas.width + Math.random() * 250;
+                        cactus.y = GAME_CONFIG.ground.desert.y - cactus.height - Math.random() * 10;
+                        cactus.width = Math.random() * 10 + 5;
+                        cactus.height = Math.random() * 50 + 20;
+                    }
+                }
+            });
+            
+            // 更新岩石
+            bg.rocks.forEach(rock => {
+                rock.x -= rock.speed * 1000 * deltaTime;
+                if (rock.x + rock.size < 0) {
+                    rock.x = canvas.width + Math.random() * 300;
+                    rock.y = groundY - Math.random() * 15 - 5;
+                    rock.size = Math.random() * 15 + 5;
+                }
+            });
+        }
+
+        // ========== 绘制函数 ==========
+        /**
+         * 绘制云朵/沙尘
+         */
+        function drawCloud(x, y, size, opacity) {
+            const isDesert = GAME_CONFIG.theme.current === 'desert';
+            const color = isDesert ? 
+                `rgba(244, 211, 94, ${opacity * 0.8})` : 
+                `rgba(255, 255, 255, ${opacity})`;
+                
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            
+            if (!isDesert) {
+                ctx.arc(x, y, size * 0.45, 0, Math.PI * 2);
+                ctx.arc(x + size * 0.35, y - size * 0.25, size * 0.38, 0, Math.PI * 2);
+                ctx.arc(x + size * 0.65, y, size * 0.5, 0, Math.PI * 2);
+                ctx.arc(x + size * 0.35, y + size * 0.2, size * 0.42, 0, Math.PI * 2);
+                ctx.arc(x - size * 0.2, y + size * 0.1, size * 0.38, 0, Math.PI * 2);
+            } else {
+                ctx.ellipse(x, y, size * 0.6, size * 0.3, Math.PI / 4, 0, Math.PI * 2);
+                ctx.ellipse(x + size * 0.4, y + size * 0.1, size * 0.5, size * 0.25, Math.PI / 4, 0, Math.PI * 2);
+                ctx.ellipse(x - size * 0.3, y - size * 0.1, size * 0.4, size * 0.2, Math.PI / 4, 0, Math.PI * 2);
+            }
+            
+            ctx.fill();
+            
+            if (!isDesert) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${opacity + 0.2})`;
+                ctx.beginPath();
+                ctx.arc(x - size * 0.1, y - size * 0.1, size * 0.2, 0, Math.PI * 2);
+                ctx.arc(x + size * 0.4, y - size * 0.15, size * 0.18, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        /**
+         * 绘制飞鸟
+         */
+        function drawBird(x, y, size) {
+            if (GAME_CONFIG.theme.current === 'desert') return;
+            
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + size * 0.8, y - size * 0.5);
+            ctx.moveTo(x + size * 0.8, y - size * 0.5);
+            ctx.lineTo(x + size * 1.2, y);
+            ctx.moveTo(x + size * 0.8, y - size * 0.5);
+            ctx.lineTo(x + size * 0.8, y + size * 0.3);
+            ctx.stroke();
+        }
+
+        /**
+         * 绘制骆驼
+         */
+        function drawCamel(x, y, size) {
+            if (GAME_CONFIG.theme.current !== 'desert') return;
+            if (x + size * 3 < 0 || x > canvas.width) return;
+            
+            ctx.fillStyle = '#8C7853';
+            
+            ctx.beginPath();
+            ctx.ellipse(x, y, size * 1.2, size * 0.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(x - size * 0.5, y - size * 0.6);
+            ctx.quadraticCurveTo(x - size * 0.2, y - size * 1.2, x + size * 0.1, y - size * 0.6);
+            ctx.quadraticCurveTo(x + size * 0.4, y - size * 1.2, x + size * 0.7, y - size * 0.6);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(x + size * 1.1, y - size * 0.3);
+            ctx.lineTo(x + size * 1.8, y - size * 0.8);
+            ctx.arc(x + size * 1.8, y - size * 1, size * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            const legLength = size * 0.8;
+            const legWidth = size * 0.2;
+            const bodyBottomY = y + size * 0.7;
+            
+            ctx.fillRect(x - size * 0.8, bodyBottomY, legWidth, legLength);
+            ctx.fillRect(x - size * 0.3, bodyBottomY, legWidth, legLength);
+            ctx.fillRect(x + size * 0.3, bodyBottomY, legWidth, legLength);
+            ctx.fillRect(x + size * 0.8, bodyBottomY, legWidth, legLength);
+            
+            ctx.fillStyle = '#5C4033';
+            ctx.beginPath();
+            ctx.arc(x + size * 1.9, y - size * 1.1, size * 0.05, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /**
+         * 绘制山峦/沙丘
+         */
+        function drawLandscape(points, offset, baseColor, shadowColor, baseY, isDune = false) {
+            ctx.fillStyle = baseColor;
+            ctx.beginPath();
+            ctx.moveTo(points[0].x + offset, baseY);
+            
+            points.forEach(point => {
+                ctx.lineTo(point.x + offset, point.y);
+            });
+            
+            ctx.lineTo(points[points.length - 1].x + offset, baseY);
+            ctx.lineTo(points[0].x + offset, baseY);
+            ctx.fill();
+            
+            ctx.fillStyle = shadowColor;
+            ctx.beginPath();
+            ctx.moveTo(points[0].x + offset, baseY);
+            
+            for (let i = 0; i < points.length; i++) {
+                const yOffset = isDune ? (Math.sin(i * 0.5) * 4) : (i % 2 === 0 ? 5 : -3);
+                ctx.lineTo(points[i].x + offset, points[i].y + yOffset);
+            }
+            
+            ctx.lineTo(points[points.length - 1].x + offset, baseY);
+            ctx.lineTo(points[0].x + offset, baseY);
+            ctx.globalAlpha = 0.3;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        /**
+         * 绘制树木
+         */
+        function drawTree(tree) {
+            if (GAME_CONFIG.theme.current === 'desert') return;
+            if (tree.x + tree.trunkWidth < 0 || tree.x > canvas.width) return;
+            
+            const ground = GAME_CONFIG.ground.nature;
+            
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(tree.x - tree.trunkWidth/2, tree.y, tree.trunkWidth, ground.y - tree.y);
+            
+            ctx.fillStyle = tree.crownColor;
+            ctx.beginPath();
+            ctx.moveTo(tree.x, tree.y - tree.crownSize);
+            ctx.lineTo(tree.x - tree.crownSize * 0.8, tree.y + tree.crownSize * 0.2);
+            ctx.lineTo(tree.x + tree.crownSize * 0.8, tree.y + tree.crownSize * 0.2);
+            ctx.closePath();
+            ctx.fill();
+            
+            const crownRgb = tree.crownColor.match(/\d+/g);
+            ctx.fillStyle = `rgb(${parseInt(crownRgb[0]) + 10}, ${parseInt(crownRgb[1]) + 15}, ${parseInt(crownRgb[2]) + 5})`;
+            ctx.beginPath();
+            ctx.moveTo(tree.x, tree.y - tree.crownSize * 1.2);
+            ctx.lineTo(tree.x - tree.crownSize * 0.6, tree.y - tree.crownSize * 0.2);
+            ctx.lineTo(tree.x + tree.crownSize * 0.6, tree.y - tree.crownSize * 0.2);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        /**
+         * 绘制仙人掌
+         */
+        function drawCactus(cactus) {
+            if (GAME_CONFIG.theme.current !== 'desert') return;
+            if (cactus.x + cactus.width < 0 || cactus.x > canvas.width) return;
+            
+            const ground = GAME_CONFIG.ground.desert;
+            
+            ctx.fillStyle = '#2E8B57';
+            ctx.fillRect(cactus.x - cactus.width/2, cactus.y, cactus.width, cactus.height);
+            
+            for (let i = 0; i < cactus.armCount; i++) {
+                const armY = cactus.y + (cactus.height / (cactus.armCount + 1)) * (i + 1);
+                const armWidth = cactus.width * 0.7;
+                const armLength = cactus.width * 2;
+                
+                ctx.fillRect(cactus.x - cactus.width/2 - armLength, armY - armWidth/2, armLength, armWidth);
+                ctx.fillRect(cactus.x + cactus.width/2, armY - armWidth/2, armLength, armWidth);
+            }
+            
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 10; i++) {
+                const spikeY = cactus.y + (cactus.height / 10) * i;
+                ctx.beginPath();
+                ctx.moveTo(cactus.x - cactus.width/2, spikeY);
+                ctx.lineTo(cactus.x - cactus.width/2 - 5, spikeY - 3);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(cactus.x + cactus.width/2, spikeY);
+                ctx.lineTo(cactus.x + cactus.width/2 + 5, spikeY - 3);
+                ctx.stroke();
+            }
+        }
+
+        /**
+         * 绘制岩石
+         */
+        function drawRock(rock) {
+            if (rock.x + rock.size < 0 || rock.x > canvas.width) return;
+            
+            const isDesert = GAME_CONFIG.theme.current === 'desert';
+            const ground = isDesert ? GAME_CONFIG.ground.desert : GAME_CONFIG.ground.nature;
+            
+            ctx.fillStyle = isDesert ? ground.rockColor : ground.stoneColor;
+            ctx.beginPath();
+            ctx.moveTo(rock.x, rock.y);
+            
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const r = rock.size * (0.8 + Math.random() * 0.4) * rock.roundness;
+                ctx.lineTo(rock.x + Math.cos(angle) * r, rock.y + Math.sin(angle) * r * 0.6);
+            }
+            
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = isDesert ? '#654321' : '#5F6B78';
+            ctx.globalAlpha = 0.4;
+            ctx.beginPath();
+            ctx.moveTo(rock.x, rock.y + 2);
+            
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const r = rock.size * (0.7 + Math.random() * 0.3) * rock.roundness;
+                ctx.lineTo(rock.x + Math.cos(angle) * r, rock.y + 2 + Math.sin(angle) * r * 0.5);
+            }
+            
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        /**
+         * 绘制地面
+         */
+        function drawGround() {
+            const isDesert = GAME_CONFIG.theme.current === 'desert';
+            const ground = isDesert ? GAME_CONFIG.ground.desert : GAME_CONFIG.ground.nature;
+            
+            if (!isDesert) {
+                ctx.fillStyle = ground.dirtColor;
+                ctx.fillRect(0, ground.y + 10, canvas.width, ground.height - 10);
+                
+                ctx.fillStyle = ground.dirtLightColor;
+                for (let x = 0; x < canvas.width; x += 25) {
+                    const w = Math.random() * 10 + 5;
+                    const h = Math.random() * 15 + 5;
+                    ctx.fillRect(x, ground.y + 10 + Math.random() * 10, w, h);
+                }
+                
+                ctx.fillStyle = ground.grassColor;
+                ctx.fillRect(0, ground.y, canvas.width, 10);
+                
+                ctx.strokeStyle = ground.grassDarkColor;
+                ctx.lineWidth = 1;
+                for (let x = 0; x < canvas.width; x += 8) {
+                    const grassHeight = Math.random() * 8 + 2;
+                    const angle = Math.random() * 0.3 - 0.15;
+                    ctx.beginPath();
+                    ctx.moveTo(x, ground.y);
+                    ctx.lineTo(x + Math.sin(angle) * 3, ground.y - grassHeight);
+                    ctx.stroke();
+                }
+                
+                ctx.fillStyle = ground.stoneColor;
+                for (let x = 0; x < canvas.width; x += 40) {
+                    if (Math.random() > 0.7) {
+                        const size = Math.random() * 3 + 1;
+                        ctx.beginPath();
+                        ctx.arc(x + Math.random() * 20, ground.y + Math.random() * 5 + 5, size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            } else {
+                ctx.fillStyle = ground.sandColor;
+                ctx.fillRect(0, ground.y, canvas.width, ground.height);
+                
+                ctx.fillStyle = ground.sandDarkColor;
+                for (let x = 0; x < canvas.width; x += 30) {
+                    const w = Math.random() * 20 + 10;
+                    const h = Math.random() * 8 + 2;
+                    ctx.beginPath();
+                    ctx.ellipse(x + Math.random() * 15, ground.y + Math.random() * 5, w, h, 0, 0, Math.PI);
+                    ctx.fill();
+                }
+                
+                ctx.fillStyle = ground.sandLightColor;
+                for (let x = 0; x < canvas.width; x += 40) {
+                    const size = Math.random() * 15 + 5;
+                    ctx.beginPath();
+                    ctx.arc(x + Math.random() * 20, ground.y + Math.random() * 10, size, 0, Math.PI * 2);
+                    ctx.globalAlpha = 0.5;
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+                
+                ctx.fillStyle = ground.rockColor;
+                for (let x = 0; x < canvas.width; x += 50) {
+                    if (Math.random() > 0.8) {
+                        const size = Math.random() * 8 + 2;
+                        ctx.beginPath();
+                        ctx.arc(x + Math.random() * 20, ground.y + Math.random() * 5, size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        /**
+         * 绘制背景
+         */
+        function drawBackground() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const bg = GAME_CONFIG.background;
+            const isDesert = GAME_CONFIG.theme.current === 'desert';
+            
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height / 2);
+            if (!isDesert) {
+                skyGradient.addColorStop(0, '#87CEEB');
+                skyGradient.addColorStop(0.7, '#B0E0E6');
+                skyGradient.addColorStop(1, '#FFE4E1');
+            } else {
+                skyGradient.addColorStop(0, '#F0E68C');
+                skyGradient.addColorStop(0.7, '#FFDEAD');
+                skyGradient.addColorStop(1, '#F4A460');
+            }
+            
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = isDesert ? 'rgba(255, 140, 0, 0.9)' : 'rgba(255, 204, 0, 0.8)';
+            ctx.beginPath();
+            ctx.arc(100 + bg.sunOffset, 80, isDesert ? 50 : 40, 0, Math.PI * 2);
+            ctx.fill();
+            
+            bg.clouds.forEach(cloud => {
+                drawCloud(cloud.x + bg.skyOffset * (isDesert ? 0.8 : 1), cloud.y, cloud.size, cloud.opacity);
+            });
+            
+            bg.birds.forEach(bird => {
+                drawBird(bird.x + bg.skyOffset * 2, bird.y, bird.size);
+            });
+            bg.camels.forEach(camel => {
+                drawCamel(camel.x, camel.y, camel.size);
+            });
+            
+            if (!isDesert) {
+                drawLandscape(bg.farMountainPoints, bg.mountainFarOffset, 
+                    'rgba(135, 206, 235, 0.6)', 'rgba(110, 180, 210, 0.8)', canvas.height / 2);
+                
+                drawLandscape(bg.midMountainPoints, bg.mountainMidOffset, 
+                    'rgba(107, 142, 35, 0.7)', 'rgba(90, 120, 30, 0.9)', canvas.height / 1.9);
+                
+                drawLandscape(bg.nearMountainPoints, bg.mountainNearOffset, 
+                    'rgba(85, 107, 47, 0.9)', 'rgba(70, 90, 40, 1)', canvas.height / 1.7);
+            } else {
+                drawLandscape(bg.farDunePoints, bg.duneFarOffset, 
+                    'rgba(244, 211, 94, 0.6)', 'rgba(238, 150, 75, 0.8)', canvas.height / 2, true);
+                
+                drawLandscape(bg.midDunePoints, bg.duneMidOffset, 
+                    'rgba(249, 199, 132, 0.7)', 'rgba(242, 143, 59, 0.9)', canvas.height / 1.9, true);
+                
+                drawLandscape(bg.nearDunePoints, bg.nearDuneOffset, 
+                    'rgba(255, 165, 0, 0.9)', 'rgba(240, 128, 128, 1)', canvas.height / 1.7, true);
+            }
+            
+            bg.trees.forEach(tree => drawTree(tree));
+            bg.cactuses.forEach(cactus => drawCactus(cactus));
+            
+            bg.rocks.forEach(rock => drawRock(rock));
+            
+            drawGround();
+        }
+
+        /**
+         * 绘制玩家
+         */
+        function drawPlayer() {
+            const p = GAME_CONFIG.player;
+            const colors = p.colors[GAME_CONFIG.theme.current];
+            
+            if (isImageLoaded && playerImage) {
+                ctx.drawImage(playerImage, p.x, p.y, p.width, p.height);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(p.x, p.y, p.width, p.height);
+            } else {
+                ctx.fillStyle = colors.main;
+                ctx.strokeStyle = colors.border;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.roundRect(p.x, p.y, p.width, p.height, 8);
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+
+        /**
+         * 绘制不同形状的障碍物
+         */
+        function drawObstacleShape(obs, gradient) {
+            ctx.fillStyle = gradient;
+            
+            switch (obs.shape) {
+                case 'rect':
+                    ctx.beginPath();
+                    ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 4);
+                    ctx.fill();
+                    // 添加纹理图案
+                    if (obs.hasPattern) {
+                        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                        ctx.lineWidth = 1;
+                        const step = obs.height / obs.patternDensity;
+                        for (let i = 0; i < obs.patternDensity; i++) {
+                            ctx.beginPath();
+                            ctx.moveTo(obs.x, obs.y + i * step);
+                            ctx.lineTo(obs.x + obs.width, obs.y + i * step);
+                            ctx.stroke();
+                        }
+                    }
+                    break;
+                    
+                case 'circle':
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        obs.x + obs.width/2, 
+                        obs.y + obs.height/2, 
+                        obs.width/2, 
+                        obs.height/2, 
+                        0, 0, Math.PI * 2
+                    );
+                    ctx.fill();
+                    break;
+                    
+                case 'triangle':
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x + obs.width/2, obs.y);
+                    ctx.lineTo(obs.x, obs.y + obs.height);
+                    ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    // 添加纹理图案
+                    if (obs.hasPattern) {
+                        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                        ctx.lineWidth = 1;
+                        for (let i = 0; i < obs.patternDensity; i++) {
+                            const y = obs.y + (obs.height / obs.patternDensity) * i;
+                            const w = (y - obs.y) / obs.height * obs.width;
+                            const x1 = obs.x + (obs.width - w)/2;
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y);
+                            ctx.lineTo(x1 + w, y);
+                            ctx.stroke();
+                        }
+                    }
+                    break;
+                    
+                case 'hexagon':
+                    ctx.beginPath();
+                    const centerX = obs.x + obs.width/2;
+                    const centerY = obs.y + obs.height/2;
+                    const radius = Math.min(obs.width, obs.height) / 2;
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (i * 60 - 30) * Math.PI / 180;
+                        const x = centerX + radius * Math.cos(angle);
+                        const y = centerY + radius * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+            }
+            
+            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        /**
+         * 绘制障碍物（丰富样式）
+         */
+        function drawObstacles() {
+            const obstacles = GAME_CONFIG.obstacles;
+            
+            // 普通障碍物
+            obstacles.list.forEach(obs => {
+                const gradient = createGradient(obs.x, obs.y, obs.width, obs.height, obs.startColor, obs.endColor);
+                drawObstacleShape(obs, gradient);
+            });
+            
+            // 坑洞（增加阴影层次感）
+            obstacles.holes.forEach(hole => {
+                ctx.fillStyle = hole.color;
+                ctx.fillRect(hole.x, hole.y, hole.width, hole.depth);
+                
+                // 多层阴影
+                ctx.fillStyle = hole.shadowColor;
+                ctx.globalAlpha = 0.8;
+                ctx.beginPath();
+                ctx.moveTo(hole.x, hole.y);
+                ctx.lineTo(hole.x + hole.width, hole.y);
+                ctx.lineTo(hole.x + hole.width - 5, hole.y + hole.depth);
+                ctx.lineTo(hole.x + 5, hole.y + hole.depth);
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                
+                // 坑底纹理
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                for (let x = hole.x + 5; x < hole.x + hole.width - 5; x += 8) {
+                    ctx.fillRect(x, hole.y + hole.depth - 3, 4, 2);
+                }
+                
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(hole.x, hole.y, hole.width, hole.depth);
+            });
+        }
+
+        /**
+         * 绘制游戏画面
+         */
+        function draw() {
+            drawBackground();
+            drawPlayer();
+            drawObstacles();
+        }
+
+        // ========== 碰撞检测与游戏重置 ==========
+        /**
+         * 碰撞检测
+         */
+        function checkCollision() {
+            const p = GAME_CONFIG.player;
+            const obstacles = GAME_CONFIG.obstacles;
+            
+            // 普通障碍物碰撞
+            for (const obs of obstacles.list) {
+                if (
+                    p.x < obs.x + obs.width &&
+                    p.x + p.width > obs.x &&
+                    p.y < obs.y + obs.height &&
+                    p.y + p.height > obs.y
+                ) {
+                    gameOver('游戏结束！');
+                    return true;
+                }
+            }
+            
+            // 坑洞碰撞
+            for (const hole of obstacles.holes) {
+                if (!p.isJumping && 
+                    p.x + p.width > hole.x && 
+                    p.x < hole.x + hole.width &&
+                    p.y + p.height >= hole.y) {
+                    gameOver('游戏结束！你掉进坑洞了！');
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        /**
+         * 游戏结束处理
+         */
+        function gameOver(message) {
+            GAME_CONFIG.isGameOver = true;
+            
+            deathSound.currentTime = 0;
+            deathSound.play().catch(err => console.log('音效播放失败:', err));
+            
+            if (GAME_CONFIG.score > highScore) {
+                highScore = GAME_CONFIG.score;
+                localStorage.setItem('parkourHighScore', highScore);
+                highScoreElement.textContent = highScore;
+            }
+            
+            alert(`${message}
+本局分数：${GAME_CONFIG.score}
+历史最高分：${highScore}
+当前主题：${GAME_CONFIG.theme.names[GAME_CONFIG.theme.current]}
+点击确定重新开始`);
+            
+            resetGame();
+        }
+
+        /**
+         * 重置游戏
+         */
+        function resetGame() {
+            if (obstacleSpawnTimer) clearTimeout(obstacleSpawnTimer);
+            
+            GAME_CONFIG.player.x = 100;
+            GAME_CONFIG.player.y = GAME_CONFIG.ground.nature.y - GAME_CONFIG.player.height;
+            GAME_CONFIG.player.velocityY = 0;
+            GAME_CONFIG.player.isJumping = false;
+            GAME_CONFIG.player.speed = 500; // 重置为初始速度（像素/秒）
+            
+            GAME_CONFIG.obstacles.list = [];
+            GAME_CONFIG.obstacles.holes = [];
+            GAME_CONFIG.score = 0;
+            GAME_CONFIG.isGameOver = false;
+            
+            GAME_CONFIG.theme.current = 'nature';
+            GAME_CONFIG.theme.lastSwitchScore = 0;
+            themeIndicator.textContent = GAME_CONFIG.theme.names.nature;
+            
+            const bg = GAME_CONFIG.background;
+            bg.skyOffset = 0;
+            bg.sunOffset = 0;
+            bg.mountainFarOffset = 0;
+            bg.mountainMidOffset = 0;
+            bg.mountainNearOffset = 0;
+            bg.duneFarOffset = 0;
+            bg.duneMidOffset = 0;
+            bg.duneNearOffset = 0;
+            
+            scoreElement.textContent = 0;
+            scoreElement.style.color = 'white';
+            
+            initBackground();
+            obstacleSpawnTimer = setTimeout(spawnObstacle, 1000);
+        }
+
+        // ========== 游戏主循环（帧率独立） ==========
+        function gameLoop(timestamp) {
+            // 计算时间差（秒）
+            const deltaTime = lastTimestamp ? Math.min((timestamp - lastTimestamp) / 1000, 0.1) : FIXED_DELTA_TIME;
+            lastTimestamp = timestamp;
+            
+            if (!GAME_CONFIG.isGameOver) {
+                updatePlayerPhysics(deltaTime);
+                updateObstacles(deltaTime);
+                updateBackground(deltaTime);
+                checkCollision();
+                draw();
+            }
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        // ========== 启动游戏 ==========
+        resizeCanvas();
+        initBackground();
+        obstacleSpawnTimer = setTimeout(spawnObstacle, 1000);
+        gameLoop();
+    </script>
+</body>
+</html>
